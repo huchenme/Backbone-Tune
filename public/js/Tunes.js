@@ -44,7 +44,14 @@
   });
 
   window.LibraryAlbumView = AlbumView.extend({
+    events: {
+      'click .queue.add': "select"
+    },
 
+    select: function() {
+      this.collection.trigger('select', this.model);
+      console.log("Triggered select", this.model);
+    }
   });
 
   window.LibraryView = Backbone.View.extend({
@@ -101,7 +108,9 @@
 
   $(function() {
     window.App = new BackboneTunes();
-    Backbone.history.start();
+    Backbone.history.start({
+      pushState: true
+    });
   });
 
 })(jQuery);
