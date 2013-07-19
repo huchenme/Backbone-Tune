@@ -87,7 +87,7 @@
       } else {
         this.set({'currentTrackIndex': currentTrackIndex - 1});
       }
-      this.logCurrentAlbumAndTrack();
+      // this.logCurrentAlbumAndTrack();
     },
 
     nextTrack: function() {
@@ -104,7 +104,7 @@
       } else {
         this.set({'currentTrackIndex': currentTrackIndex + 1});
       }
-      this.logCurrentAlbumAndTrack();
+      // this.logCurrentAlbumAndTrack();
     },
 
     logCurrentAlbumAndTrack: function() {
@@ -127,8 +127,7 @@
       },
 
       render: function() {
-        var renderedContent = this.template(this.model.toJSON());
-        $(this.el).html(renderedContent);
+        $(this.el).html(this.template(this.model.toJSON()));
         return this;
       }
     });
@@ -176,10 +175,35 @@
 
       initialize: function() {
         this.model.on('remove', this.remove, this);
+        this.player = this.options.player;
+        this.player.on('change:state', this.updateState, this);
+        this.player.bind('change:currentTrackIndex', this.updateTrack, this);
       },
 
       removeFromPlaylist: function() {
         this.options.playlist.remove(this.model);
+      },
+
+      render: function() {
+        $(this.el).html(this.template(this.model.toJSON()));
+        this.updateTrack();
+        return this;
+      },
+
+      updateState: function() {
+        var isAlbumCurrent = (this.player.currentAlbum() === this.model);
+        $(this.el).toggleClass('current', isAlbumCurrent);
+      },
+
+      updateTrack: function() {
+        var isAlbumCurrent = (this.player.currentAlbum() === this.model);
+        if (isAlbumCurrent) {
+          var currentTrackIndex = this.player.get('currentTrackIndex');
+          this.$('li').each(function(index, el) {
+            $(el).toggleClass('current', index == currentTrackIndex);
+          });
+        }
+        this.updateState();
       }
     });
 
@@ -187,6 +211,13 @@
       tagName: 'section',
       className: 'playlist',
       template: _.template($('#playlist-template').html()),
+
+      events: {
+        'click button.control.next': "nextTrack",
+        'click button.control.prev': "prevTrack",
+        'click button.control.play': "play",
+        'click button.control.pause': "pause"
+      },
 
       initialize: function() {
         this.collection.on('reset', this.render, this);
@@ -214,6 +245,22 @@
           playlist: this.collection
         });
         this.$('ul').append(view.render().el);
+      },
+
+      nextTrack: function() {
+        this.player.nextTrack();
+      },
+
+      prevTrack: function() {
+        this.player.prevTrack();
+      },
+
+      play: function() {
+
+      },
+
+      pause: function() {
+
       }
     });
 
