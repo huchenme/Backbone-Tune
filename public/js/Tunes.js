@@ -116,142 +116,144 @@
 
   window.library = new Albums();
 
-  // Views
+  $(document).ready(function() {
+    window.AlbumView = Backbone.View.extend({
+      tagName: 'li',
+      className: 'album',
+      template: _.template($('#album-template').html()),
 
-  window.AlbumView = Backbone.View.extend({
-    tagName: 'li',
-    className: 'album',
+      initialize: function() {
+        this.model.bind('change', this.render, this);
+      },
 
-    initialize: function() {
-      // _.bindAll(this, 'render');
-      this.model.bind('change', this.render, this);
-      // this.model.on('change', this.render, this);
-      this.template = _.template($('#album-template').html());
-    },
+      render: function() {
+        var renderedContent = this.template(this.model.toJSON());
+        $(this.el).html(renderedContent);
+        return this;
+      }
+    });
 
-    render: function() {
-      var renderedContent = this.template(this.model.toJSON());
-      $(this.el).html(renderedContent);
-      return this;
-    }
-  });
+    window.LibraryView = Backbone.View.extend({
+      tagName: 'section',
+      className: 'library',
+      template: _.template($('#library-template').html()),
 
-  window.LibraryView = Backbone.View.extend({
-    tagName: 'section',
-    className: 'library',
+      initialize: function() {
+        this.collection.on('reset', this.render, this);
+      },
 
-    initialize: function() {
-      // _.bindAll(this, 'render');
-      this.template = _.template($('#library-template').html());
-      this.collection.on('reset', this.render, this);
-    },
+      render: function() {
+        var $albums,
+            collection = this.collection;
 
-    render: function() {
-      var $albums,
-          collection = this.collection;
-
-      $(this.el).html(this.template({}));
-      $albums = this.$(".albums");
-      collection.each(function(album) {
-        var view = new LibraryAlbumView ({
-          model: album,
-          collection: collection
+        $(this.el).html(this.template({}));
+        $albums = this.$(".albums");
+        collection.each(function(album) {
+          var view = new LibraryAlbumView ({
+            model: album,
+            collection: collection
+          });
+          $albums.append(view.render().el);
         });
-        $albums.append(view.render().el);
-      });
-      return this;
-    }
-  });
+        return this;
+      }
+    });
 
-  window.LibraryAlbumView = AlbumView.extend({
-    events: {
-      'click .queue.add': "select"
-    },
+    window.LibraryAlbumView = AlbumView.extend({
+      events: {
+        'click .queue.add': "select"
+      },
 
-    select: function() {
-      this.collection.trigger('select', this.model);
-    }
-  });
+      select: function() {
+        this.collection.trigger('select', this.model);
+      }
+    });
 
-  window.PlaylistAlumnView = AlbumView.extend({
+    window.PlaylistAlumnView = AlbumView.extend({
+      events: {
+        'click .queue.remove': "removeFromPlaylist"
+      },
 
-  });
+      initialize: function() {
+        this.model.on('remove', this.remove, this);
+      },
 
-  window.PlaylistView = Backbone.View.extend({
-    tagName: 'section',
-    className: 'playlist',
+      removeFromPlaylist: function() {
+        this.options.playlist.remove(this.model);
+      }
+    });
 
-    initialize: function() {
-      this.template = _.template($('#playlist-template').html());
-      this.collection.on('reset', this.render, this);
-      this.collection.on('add', this.renderAlbum, this);
-      this.player = this.options.player;
-      this.library = this.options.library;
-      this.library.on('select', this.queueAlbum, this);
-    },
+    window.PlaylistView = Backbone.View.extend({
+      tagName: 'section',
+      className: 'playlist',
+      template: _.template($('#playlist-template').html()),
 
-    render: function() {
-      $(this.el).html(this.template(this.player.toJSON()));
-      this.$('button.play').toggle(this.player.isStopped());
-      this.$('button.pause').toggle(this.player.isPlaying());
-      return this;
-    },
+      initialize: function() {
+        this.collection.on('reset', this.render, this);
+        this.collection.on('add', this.renderAlbum, this);
+        this.player = this.options.player;
+        this.library = this.options.library;
+        this.library.on('select', this.queueAlbum, this);
+      },
 
-    queueAlbum: function(album) {
-      this.collection.add(album);
-    },
+      render: function() {
+        $(this.el).html(this.template(this.player.toJSON()));
+        this.$('button.play').toggle(this.player.isStopped());
+        this.$('button.pause').toggle(this.player.isPlaying());
+        return this;
+      },
 
-    renderAlbum: function(album) {
-      var view = new PlaylistAlumnView({
-        model: album,
-        player: this.player,
-        playlist: this.collection
-      });
-      this.$('ul').append(view.render().el);
-    }
-  });
+      queueAlbum: function(album) {
+        this.collection.add(album);
+      },
 
-  // Router
+      renderAlbum: function(album) {
+        var view = new PlaylistAlumnView({
+          model: album,
+          player: this.player,
+          playlist: this.collection
+        });
+        this.$('ul').append(view.render().el);
+      }
+    });
 
-  window.BackboneTunes = Backbone.Router.extend({
-    routes: {
-      '': 'home',
-      'blank': 'blank'
-    },
+    // Router
 
-    initialize: function() {
-      this.libraryView = new LibraryView({
-        collection: window.library
-      });
+    window.BackboneTunes = Backbone.Router.extend({
+      routes: {
+        '': 'home',
+        'blank': 'blank'
+      },
 
-      this.playlistView = new PlaylistView({
-        collection: window.player.playlist,
-        player: window.player,
-        library: window.library
-      });
-    },
+      initialize: function() {
+        this.libraryView = new LibraryView({
+          collection: window.library
+        });
 
-    home: function() {
-      var $container = $('#container');
-      $container.empty();
-      $container.append(this.playlistView.render().el);
-      $container.append(this.libraryView.render().el);
-    },
+        this.playlistView = new PlaylistView({
+          collection: window.player.playlist,
+          player: window.player,
+          library: window.library
+        });
+      },
 
-    blank: function() {
-      var $container = $('#container');
-      $container.empty();
-      $container.text('blank');
-    }
-  });
+      home: function() {
+        var $container = $('#container');
+        $container.empty();
+        $container.append(this.playlistView.render().el);
+        $container.append(this.libraryView.render().el);
+      },
 
-  // Initialize
+      blank: function() {
+        var $container = $('#container');
+        $container.empty();
+        $container.text('blank');
+      }
+    });
 
-  $(function() {
     window.App = new BackboneTunes();
     Backbone.history.start({
       pushState: true
     });
   });
-
 })(jQuery);
