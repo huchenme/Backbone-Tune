@@ -70,7 +70,11 @@
 
     currentTrackUrl: function() {
       var album = this.currentAlbum();
-      return album.trackUrlAtIndex(this.get('currentTrackIndex'));
+      if (album) {
+        return album.trackUrlAtIndex(this.get('currentTrackIndex'));
+      } else {
+        return null;
+      }
     },
 
     prevTrack: function() {
@@ -177,11 +181,12 @@
         this.model.on('remove', this.remove, this);
         this.player = this.options.player;
         this.player.on('change:state', this.updateState, this);
-        this.player.bind('change:currentTrackIndex', this.updateTrack, this);
+        this.player.on('change:currentTrackIndex', this.updateTrack, this);
       },
 
       removeFromPlaylist: function() {
         this.options.playlist.remove(this.model);
+        this.player.reset();
       },
 
       render: function() {
@@ -223,9 +228,17 @@
         this.collection.on('reset', this.render, this);
         this.collection.on('add', this.renderAlbum, this);
         this.player = this.options.player;
+        this.player.on('change:state', this.updateState, this);
+        this.player.on('change:currentTrackIndex', this.updateTrack, this);
+        this.createAudio();
+
         this.library = this.options.library;
         this.library.on('select', this.queueAlbum, this);
       },
+
+      createAudio: function() {
+        this.audio = new Album();
+      }
 
       render: function() {
         $(this.el).html(this.template(this.player.toJSON()));
@@ -256,11 +269,26 @@
       },
 
       play: function() {
-
+        this.player.play();
       },
 
       pause: function() {
+        this.player.pause();
+      },
 
+      updateState: function() {
+        this.updateTrack();
+        this.$('button.play').toggle(this.player.isStopped());
+        this.$('button.pause').toggle(this.player.isPlaying());
+      },
+
+      updateTrack: function() {
+        this.audio.src = this.player.currentTrackUrl();
+        if (this.player.get('state') === 'play') {
+          this.audio.play();
+        } else {
+          this.audio.pause();
+        }
       }
     });
 
